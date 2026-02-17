@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+*.log
+anchor_project/target/
+anchor_project/.anchor/

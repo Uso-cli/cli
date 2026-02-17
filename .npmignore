@@ -1,0 +1,20 @@
+# Ignore development and test artifacts
+anchor_project/
+anchor_program/
+or/
+.antigravityignore/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.swp
+*.swo

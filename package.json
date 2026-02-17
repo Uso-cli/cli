@@ -1,0 +1,29 @@
+{
+  "name": "@xaidenlabs/uso",
+  "version": "1.0.1",
+  "description": "Universal Solana Orchestrator - A one-command setup tool for Solana and Anchor development environments on Windows, macOS, and Linux.",
+  "bin": {
+    "uso": "bin/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "solana",
+    "anchor",
+    "web3",
+    "rust",
+    "install",
+    "setup",
+    "developer-tools"
+  ],
+  "author": "Xaiden Labs",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^14.0.3",
+    "ora": "^5.4.1",
+    "shelljs": "^0.10.0"
+  }
+}
