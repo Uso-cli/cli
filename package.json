@@ -1,6 +1,6 @@
 {
   "name": "@xaidenlabs/uso",
-  "version": "1.1.19",
+  "version": "1.1.20",
   "description": "Universal Solana Orchestrator - A one-command setup tool for Solana and Anchor development environments on Windows, macOS, and Linux.",
   "bin": {
     "uso": "bin/index.js"
