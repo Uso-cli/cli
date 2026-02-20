@@ -1,7 +1,7 @@
 {
   "name": "@xaidenlabs/uso",
-  "version": "1.1.47",
-  "description": "Universal Solana Orchestrator - A one-command setup tool for Solana and Anchor development environments on Windows, macOS, and Linux.",
+  "version": "1.1.48",
+  "description": "Universal Solana Development Toolchain. Native or Stealth WSL Mode. Build, test, and deploy without the friction.",
   "bin": {
     "uso": "bin/index.js"
   },
