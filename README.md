@@ -447,4 +447,4 @@ npm uninstall -g @xaidenlabs/uso
 
 ---
 
-**Developed by [Xaiden Labs](https://xaidenlabs.com)**
+**Developed by Xaiden Labs · [GitHub](https://github.com/Uso-cli) · [npm](https://www.npmjs.com/package/@xaidenlabs/uso) · [Twitter](https://x.com/uso_cli)**
