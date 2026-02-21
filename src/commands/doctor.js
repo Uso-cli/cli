@@ -13,6 +13,44 @@ const checkGit = (silent = false) => {
     return installed;
 };
 
+const checkWsl = (silent = false) => {
+    // Only relevant on Windows
+    if (os.platform() !== 'win32') return true;
+
+    // 1. Check wsl.exe exists
+    const hasWslBinary = !!shell.which('wsl');
+    if (!hasWslBinary) {
+        if (!silent) {
+            log.error("❌ WSL not installed");
+            log.warn("   👉 Run 'uso install' to automatically install WSL (admin permission required).");
+        }
+        return false;
+    }
+
+    // 2. Check WSL feature is active
+    const statusCheck = shell.exec('wsl --status', { silent: true });
+    if (statusCheck.code !== 0) {
+        if (!silent) {
+            log.warn("⚠️  WSL is installed but not fully configured (restart may be pending).");
+            log.warn("   👉 Try restarting your PC, then run 'uso install' again.");
+        }
+        return false;
+    }
+
+    // 3. Check Ubuntu distro is ready
+    const ubuntuCheck = shell.exec('wsl -d Ubuntu -e true', { silent: true });
+    if (ubuntuCheck.code !== 0) {
+        if (!silent) {
+            log.warn("⚠️  WSL installed but Ubuntu distro is not yet set up.");
+            log.warn("   👉 Run 'uso install' to finish the setup.");
+        }
+        return false;
+    }
+
+    if (!silent) log.success("✅ WSL installed and Ubuntu ready");
+    return true;
+};
+
 const checkRust = (silent = false) => {
     const rustc = shell.exec('rustc --version', { silent: true });
     const installed = rustc.code === 0;
@@ -111,6 +149,7 @@ const doctor = async () => {
     log.header(`🩺 Running Doctor for ${platform}...`);
 
     checkGit();
+    if (platform === 'win32') checkWsl();
     checkRust();
     checkSolana();
     checkAnchor();
@@ -120,6 +159,7 @@ const doctor = async () => {
 module.exports = {
     doctor,
     checkGit,
+    checkWsl,
     checkRust,
     checkSolana,
     checkAnchor,

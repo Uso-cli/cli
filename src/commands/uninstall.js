@@ -20,8 +20,6 @@ const askQuestion = (query) => {
  * Runs a command and attempts to elevate privileges if it fails with a permission error.
  */
 const runOrElevate = (command, description) => {
-    log.info(`Running: ${description}...`);
-
     // We run without silent:true initially to let the user see output, 
     // but detecting the error code is what matters.
     // actually, to detect the specific string "os error 1314", we need to capture output.

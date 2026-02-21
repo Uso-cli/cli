@@ -10,8 +10,37 @@ const { ensureWalletInteractive } = require('../utils/wallet');
 const path = require('path');
 const fs = require('fs');
 
-const init = async (component) => {
+const { installWsl, installWslFeature } = require('../platforms/wsl');
+
+const init = async (component, options) => {
     const platform = os.platform();
+
+    // --- On Windows, ALWAYS use the WSL path ---
+    if (platform === 'win32') {
+        const hasWslBinary = !!shell.which('wsl');
+
+        if (!hasWslBinary) {
+            // WSL is not installed at all — request admin elevation to enable the feature
+            log.header("🐧 Windows Subsystem for Linux (WSL) not found.");
+            log.info("🛡️  Requesting administrator permission to install WSL...");
+            log.info("👉 Please click 'Yes' in the UAC popup that appears to allow this.");
+            console.log("");
+
+            const wslInstalled = await installWslFeature();
+
+            if (!wslInstalled) {
+                // installWslFeature already printed the relevant error/reboot message
+                return;
+            }
+
+            // If we're here, WSL was instantly available (rare — usually needs reboot)
+            // Fall through to installWsl() below
+        }
+
+        // WSL binary is present — run the full WSL toolchain install
+        await installWsl();
+        return;
+    }
 
     if (component) {
         component = component.toLowerCase();
