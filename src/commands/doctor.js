@@ -3,6 +3,26 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const { log } = require('../utils/logger');
+const { isStealthMode } = require('../utils/stealth');
+const { runWsl } = require('../utils/wsl-bridge');
+
+const getStealthContext = () => {
+    if (os.platform() !== 'win32') return { enabled: false, distro: 'Ubuntu' };
+    return isStealthMode();
+};
+
+const runVersionCheck = (tool, stealth) => {
+    if (stealth.enabled) {
+        // Mirror the init/workflow environment inside WSL.
+        const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"';
+        return runWsl(`${envSetup} && ${tool} --version`, {
+            distro: stealth.distro,
+            execOpts: { silent: true }
+        });
+    }
+
+    return shell.exec(`${tool} --version`, { silent: true });
+};
 
 const checkGit = (silent = false) => {
     const installed = !!shell.which('git');
@@ -52,16 +72,34 @@ const checkWsl = (silent = false) => {
 };
 
 const checkRust = (silent = false) => {
-    const rustc = shell.exec('rustc --version', { silent: true });
+    const stealth = getStealthContext();
+    const rustc = runVersionCheck('rustc', stealth);
     const installed = rustc.code === 0;
     if (!silent) {
-        if (installed) log.success(`✅ Rust installed (${rustc.stdout.trim()})`);
-        else log.error("❌ Rust not found");
+        if (installed) {
+            const scope = stealth.enabled ? ' via WSL' : '';
+            log.success(`✅ Rust installed${scope} (${rustc.stdout.trim()})`);
+        } else {
+            const scope = stealth.enabled ? ' in WSL environment' : '';
+            log.error(`❌ Rust not found${scope}`);
+        }
     }
     return installed;
 };
 
 const checkSolana = (silent = false) => {
+    const stealth = getStealthContext();
+
+    if (stealth.enabled) {
+        const solanaWsl = runVersionCheck('solana', stealth);
+        const installed = solanaWsl.code === 0;
+        if (!silent) {
+            if (installed) log.success(`✅ Solana CLI installed via WSL (${solanaWsl.stdout.trim()})`);
+            else log.error("❌ Solana CLI not found in WSL environment");
+        }
+        return installed;
+    }
+
     // 1. Try PATH first
     let solana = shell.exec('solana --version', { silent: true });
     if (solana.code === 0) {
@@ -87,11 +125,17 @@ const checkSolana = (silent = false) => {
 };
 
 const checkAnchor = (silent = false) => {
-    const anchor = shell.exec('anchor --version', { silent: true });
+    const stealth = getStealthContext();
+    const anchor = runVersionCheck('anchor', stealth);
     const installed = anchor.code === 0;
     if (!silent) {
-        if (installed) log.success(`✅ Anchor installed (${anchor.stdout.trim()})`);
-        else log.error("❌ Anchor not found");
+        if (installed) {
+            const scope = stealth.enabled ? ' via WSL' : '';
+            log.success(`✅ Anchor installed${scope} (${anchor.stdout.trim()})`);
+        } else {
+            const scope = stealth.enabled ? ' in WSL environment' : '';
+            log.error(`❌ Anchor not found${scope}`);
+        }
     }
     return installed;
 };
@@ -146,7 +190,11 @@ const checkCppTools = (silent = false) => {
 
 const doctor = async () => {
     const platform = os.platform();
+    const stealth = getStealthContext();
     log.header(`🩺 Running Doctor for ${platform}...`);
+    if (platform === 'win32' && stealth.enabled) {
+        log.info(`🐧 Stealth Mode active (WSL distro: ${stealth.distro}). Checking toolchain inside WSL.`);
+    }
 
     checkGit();
     if (platform === 'win32') checkWsl();

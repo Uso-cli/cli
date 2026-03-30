@@ -154,17 +154,41 @@ touch ~/.hushlogin
 
 # --- Rust ---
 source $HOME/.cargo/env 2>/dev/null || true
-if ! command -v cargo &> /dev/null; then
-    echo "🦀 Installing Rust..."
-    if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
-        source $HOME/.cargo/env 2>/dev/null || true
-        echo "✅ Rust installed."
-    else
-        FAILURES="$FAILURES rust"
-        echo "❌ Rust installation failed."
-    fi
-else
+
+# rustc can exist but still fail if component/toolchain is broken.
+if command -v rustc &> /dev/null && rustc --version >/dev/null 2>&1; then
     echo "✅ Rust already installed."
+else
+    # If rustup exists, try repairing first.
+    if command -v rustup &> /dev/null; then
+        echo "🦀 Repairing Rust toolchain..."
+        rustup toolchain install stable >/dev/null 2>&1 || true
+        rustup default stable >/dev/null 2>&1 || true
+        rustup component add rustc cargo >/dev/null 2>&1 || true
+        source $HOME/.cargo/env 2>/dev/null || true
+    fi
+
+    if command -v rustc &> /dev/null && rustc --version >/dev/null 2>&1; then
+        echo "✅ Rust repaired."
+    else
+        echo "🦀 Installing Rust..."
+        if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+            source $HOME/.cargo/env 2>/dev/null || true
+            rustup toolchain install stable >/dev/null 2>&1 || true
+            rustup default stable >/dev/null 2>&1 || true
+            rustup component add rustc cargo >/dev/null 2>&1 || true
+
+            if command -v rustc &> /dev/null && rustc --version >/dev/null 2>&1; then
+                echo "✅ Rust installed."
+            else
+                FAILURES="$FAILURES rust"
+                echo "❌ Rust install completed but rustc is not runnable."
+            fi
+        else
+            FAILURES="$FAILURES rust"
+            echo "❌ Rust installation failed."
+        fi
+    fi
 fi
 source $HOME/.cargo/env 2>/dev/null || true
 
