@@ -3,3 +3,5 @@ node_modules/
 *.log
 anchor_project/target/
 anchor_project/.anchor/
+.uso/
+packages/uso-core/dist/
