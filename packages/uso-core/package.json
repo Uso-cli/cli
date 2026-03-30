@@ -1,0 +1,36 @@
+{
+  "name": "@xaidenlabs/uso-core",
+  "version": "0.1.0",
+  "description": "Intent-based core SDK for USO workflows.",
+  "type": "module",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:meta": "node -e \"const fs=require('fs'); fs.mkdirSync('dist/cjs',{recursive:true}); fs.writeFileSync('dist/cjs/package.json','{\\\"type\\\":\\\"commonjs\\\"}\\n'); fs.mkdirSync('dist/esm',{recursive:true}); fs.writeFileSync('dist/esm/package.json','{\\\"type\\\":\\\"module\\\"}\\n');\"",
+    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:meta",
+    "test": "npm run build && node --test test/*.test.cjs"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.2"
+  },
+  "license": "ISC"
+}
