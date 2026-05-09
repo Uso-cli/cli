@@ -7,7 +7,7 @@ const { log, spinner } = require('../utils/logger');
 const { ensureWalletInteractive, resolveSolanaKeygen } = require('../utils/wallet');
 const { getCargoBinPath } = require('../utils/paths');
 const { isStealthMode } = require('../utils/stealth');
-const { runWsl } = require('../utils/wsl-bridge');
+const { runWsl, toWslPath } = require('../utils/wsl-bridge');
 
 const getSolanaBin = () => {
     if (shell.which('solana')) return 'solana';
@@ -134,17 +134,11 @@ const verify = async () => {
             let buildResult;
             
             if (stealth.enabled) {
-                // Build inside WSL
-                const wslTempDir = `/tmp/uso-verify-${Date.now()}`;
-                const copyCmd = `mkdir -p ${wslTempDir} && cp -r /mnt/c/Users/*/AppData/Local/Temp/uso-verification-* ${wslTempDir}`;
-                
-                // Copy files to WSL
-                runWsl(`mkdir -p ${wslTempDir} && cp -r "${tempDir.replace(/\\/g, '/')}" ${wslTempDir}/project`, { 
-                    distro: stealth.distro 
-                });
+                // Convert Windows path to WSL path
+                const wslProjectPath = toWslPath(tempDir);
                 
                 // Run anchor build in WSL
-                const buildCmd = `cd ${wslTempDir}/project && source $HOME/.cargo/env 2>/dev/null && anchor build`;
+                const buildCmd = `source $HOME/.cargo/env 2>/dev/null && cd "${wslProjectPath}" && anchor build`;
                 buildResult = runWsl(buildCmd, { 
                     distro: stealth.distro,
                     execOpts: { silent: false }
