@@ -84,13 +84,11 @@ const ensureWalletInteractive = async () => {
           try {
             if (stealth.enabled) {
               // Create wallet inside WSL
-              const mkdirCmd = "mkdir -p $HOME/.config/solana";
-              runWsl(mkdirCmd, { distro: stealth.distro });
-
-              // Run solana-keygen inside WSL with interactive mode
               const { spawnSync } = require("child_process");
+              
+              // Use a login shell (-l) to load full environment, then create wallet
               const wslCmd = `mkdir -p "$HOME/.config/solana" && solana-keygen new --outfile "$HOME/.config/solana/id.json"`;
-              const result = spawnSync("wsl", ["-d", stealth.distro, "-e", "bash", "-c", wslCmd], { stdio: "inherit" });
+              const result = spawnSync("wsl", ["-d", stealth.distro, "-e", "bash", "-l", "-c", wslCmd], { stdio: "inherit" });
 
               // Verify wallet was created in WSL
               const verifyCmd = runWsl(
