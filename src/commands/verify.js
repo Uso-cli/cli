@@ -6,6 +6,8 @@ const readline = require('readline');
 const { log, spinner } = require('../utils/logger');
 const { ensureWalletInteractive, resolveSolanaKeygen } = require('../utils/wallet');
 const { getCargoBinPath } = require('../utils/paths');
+const { isStealthMode } = require('../utils/stealth');
+const { runWsl } = require('../utils/wsl-bridge');
 
 const getSolanaBin = () => {
     if (shell.which('solana')) return 'solana';
@@ -113,6 +115,7 @@ const verify = async () => {
 
     const templateDir = path.resolve(__dirname, '../../anchor_project');
     const tempDir = path.join(os.tmpdir(), 'uso-verification-' + Date.now());
+    const stealth = isStealthMode();
 
     try {
         shell.cp('-R', templateDir, tempDir);
@@ -128,10 +131,30 @@ const verify = async () => {
                 log.warn(`⚠️  Retrying build (Attempt ${attempts}/${maxAttempts})...`);
             }
 
-            const buildResult = shell.exec(`cd "${tempDir}" && ${anchorCmd} build`, {
-                silent: false,
-                env: process.env
-            });
+            let buildResult;
+            
+            if (stealth.enabled) {
+                // Build inside WSL
+                const wslTempDir = `/tmp/uso-verify-${Date.now()}`;
+                const copyCmd = `mkdir -p ${wslTempDir} && cp -r /mnt/c/Users/*/AppData/Local/Temp/uso-verification-* ${wslTempDir}`;
+                
+                // Copy files to WSL
+                runWsl(`mkdir -p ${wslTempDir} && cp -r "${tempDir.replace(/\\/g, '/')}" ${wslTempDir}/project`, { 
+                    distro: stealth.distro 
+                });
+                
+                // Run anchor build in WSL
+                const buildCmd = `cd ${wslTempDir}/project && source $HOME/.cargo/env 2>/dev/null && anchor build`;
+                buildResult = runWsl(buildCmd, { 
+                    distro: stealth.distro,
+                    execOpts: { silent: false }
+                });
+            } else {
+                buildResult = shell.exec(`cd "${tempDir}" && ${anchorCmd} build`, {
+                    silent: false,
+                    env: process.env
+                });
+            }
 
             success = buildResult.code === 0;
             let stderr = buildResult.stderr + buildResult.stdout;
@@ -144,7 +167,7 @@ const verify = async () => {
                     continue;
                 }
 
-                if (os.platform() === 'win32' && stderr.includes('os error 1314')) {
+                if (!stealth.enabled && os.platform() === 'win32' && stderr.includes('os error 1314')) {
                     log.warn("⚠️  Privilege error detected (os error 1314).");
                     log.info("ℹ️  First-time Solana build requires Administrator privileges to install tools.");
                     log.info("🛡️  Retrying with Elevated Permissions (Please accept UAC prompt)...");
