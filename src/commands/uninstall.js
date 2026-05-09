@@ -337,7 +337,9 @@ const uninstall = async (component) => {
       "\n🐧 Remove WSL Ubuntu distro completely? (y/N): ",
     );
     if (removeWslDistro.toLowerCase() === "y") {
-      log.warn(`⚠️  This will completely remove the ${stealth.distro} distro and all its data.`);
+      log.warn(
+        `⚠️  This will completely remove the ${stealth.distro} distro and all its data.`,
+      );
       const confirmWslRemoval = await askQuestion(
         "💥 Type 'REMOVE WSL' to confirm distro removal: ",
       );
