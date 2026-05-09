@@ -10,7 +10,12 @@
     "src",
     "templates",
     "anchor_program",
-    "anchor_project"
+    "anchor_project/Anchor.toml",
+    "anchor_project/package.json",
+    "anchor_project/tsconfig.json",
+    "anchor_project/programs/uso_verifier/Cargo.toml",
+    "anchor_project/programs/uso_verifier/src",
+    "anchor_project/tests"
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

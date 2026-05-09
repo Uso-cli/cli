@@ -6,3 +6,5 @@ solana-install.exe
 tests/
 node_modules/
 anchor_project/node_modules/
+anchor_project/target/
+anchor_project/programs/**/target/
