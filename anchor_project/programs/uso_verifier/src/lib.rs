@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"); // Solpg will generate this for you
+declare_id!("DxpMwS8nm9djeipqnbeX5kWm2DDJeicuFweNmxvsrBnE");
 
 #[program]
 pub mod uso_verifier {
