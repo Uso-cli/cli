@@ -6,6 +6,40 @@ const fs = require("fs");
 const os = require("os");
 const { spawnSync } = require("child_process");
 const chalk = require("chalk");
+const WSL_DISTRO = "Ubuntu";
+
+const progressHelpers = `
+print_progress() {
+  local label="$1"
+  local percent="$2"
+  printf "\r%s %d%%" "$label" "$percent"
+}
+
+run_with_progress() {
+  local label="$1"
+  local start="$2"
+  local end="$3"
+  shift 3
+
+  "$@" &
+  local pid=$!
+  local current="$start"
+
+  while kill -0 "$pid" 2>/dev/null; do
+    print_progress "$label" "$current"
+    if [ "$current" -lt "$((end - 1))" ]; then
+      current=$((current + 1))
+    fi
+    sleep 2
+  done
+
+  wait "$pid"
+  local status=$?
+  print_progress "$label" "$end"
+  printf "\n"
+  return "$status"
+}
+`.replace(/\r\n/g, "\n");
 
 /**
  * Installs the WSL Windows Feature via an elevated PowerShell UAC prompt.
@@ -71,7 +105,9 @@ const installWsl = async () => {
   // 2. Install Ubuntu silently (Branded as Uso Engine)
   // We use 'wsl -d Ubuntu -e true' to check if it's installed and runnable.
   // 'wsl -l -v' output is notoriously unreliable due to charset encoding (UTF-16) on Windows.
-  const checkDistro = shell.exec("wsl -d Ubuntu -e true", { silent: true });
+  const checkDistro = shell.exec(`wsl -d ${WSL_DISTRO} -e true`, {
+    silent: true,
+  });
 
   // If exit code is 0, it's installed and working.
   if (checkDistro.code !== 0) {
@@ -89,7 +125,10 @@ const installWsl = async () => {
     };
 
     // Attempt 1: Standard Install
-    let success = tryInstall(["--install", "-d", "Ubuntu"], "Standard Install");
+    let success = tryInstall(
+      ["--install", "-d", WSL_DISTRO],
+      "Standard Install",
+    );
 
     // Attempt 2: Update WSL Kernel (Fixes network/protocol issues)
     if (!success) {
@@ -98,7 +137,7 @@ const installWsl = async () => {
       );
       spawnSync("wsl", ["--update"], { stdio: "inherit", shell: false });
       success = tryInstall(
-        ["--install", "-d", "Ubuntu"],
+        ["--install", "-d", WSL_DISTRO],
         "Install after Update",
       );
     }
@@ -107,7 +146,7 @@ const installWsl = async () => {
     if (!success) {
       log.warn("⚠️  Still failing. Trying --web-download (Bypasses Store)...");
       success = tryInstall(
-        ["--install", "-d", "Ubuntu", "--web-download"],
+        ["--install", "-d", WSL_DISTRO, "--web-download"],
         "Web Download Install",
       );
     }
@@ -120,13 +159,27 @@ const installWsl = async () => {
         "\n👉 ACTION REQUIRED: Run this command manually in PowerShell as Administrator:",
       );
       console.log(
-        chalk.bold.yellow("    wsl --install -d Ubuntu --web-download"),
+        chalk.bold.yellow(`    wsl --install -d ${WSL_DISTRO} --web-download`),
       );
       log.warn(
         "\nOnce that completes successfully, run 'uso setup --wsl' again.",
       );
       return false;
     }
+
+    const verifyInstall = shell.exec(`wsl -d ${WSL_DISTRO} -e true`, {
+      silent: true,
+    });
+    if (verifyInstall.code !== 0) {
+      log.warn(
+        `⚠️  ${WSL_DISTRO} is not ready yet. WSL installation usually needs a full system reboot before the distro becomes available.`,
+      );
+      log.warn(
+        "👉 Restart Windows, then run 'uso install' again to continue the setup.",
+      );
+      return false;
+    }
+
     log.success("✅ Uso Engine configured.");
   } else {
     log.success("✅ Uso Engine is ready.");
@@ -146,10 +199,10 @@ const installWsl = async () => {
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
+  ${progressHelpers}
+
 if ! command -v cc &> /dev/null || ! command -v pkg-config &> /dev/null; then
-    echo "📦 Installing system build tools..."
-    apt-get update -y -qq
-    apt-get install -y -qq curl build-essential pkg-config libssl-dev libudev-dev
+    run_with_progress "📦 Installing system build tools..." 0 100 bash -lc "apt-get update -y -qq && apt-get install -y -qq curl build-essential pkg-config libssl-dev libudev-dev"
     echo "✅ Build tools installed."
 else
     echo "✅ Build tools already present."
@@ -162,7 +215,7 @@ fi
 
   const spin1 = spinner("Phase 1/2: Installing system dependencies...").start();
   const rootRes = shell.exec(
-    `wsl -d Ubuntu -u root -e bash "${wslRootScriptPath}"`,
+    `wsl -d ${WSL_DISTRO} -u root -e bash "${wslRootScriptPath}"`,
   );
   fs.unlinkSync(rootScriptPath);
 
@@ -178,6 +231,8 @@ fi
 #!/bin/bash
 # NO set -e — we handle errors per-step
 FAILURES=""
+
+${progressHelpers}
 
 # Hush login
 touch ~/.hushlogin
@@ -202,7 +257,7 @@ else
         echo "✅ Rust repaired."
     else
         echo "🦀 Installing Rust..."
-        if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+      if run_with_progress "🦀 Installing Rust..." 10 35 bash -lc "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"; then
             source $HOME/.cargo/env 2>/dev/null || true
             rustup toolchain install stable >/dev/null 2>&1 || true
             rustup default stable >/dev/null 2>&1 || true
@@ -226,14 +281,54 @@ source $HOME/.cargo/env 2>/dev/null || true
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 if ! command -v solana &> /dev/null; then
     echo "☀️  Installing Solana CLI..."
-    if sh -c "$(curl -sSfL https://release.solana.com/stable/install)" 2>/dev/null; then
+    
+    # Helper to download with retries and proper SSL handling
+    install_solana_with_retry() {
+        local url="$1"
+        local description="$2"
+        local max_attempts=3
+        local attempt=1
+        
+        while [ $attempt -le $max_attempts ]; do
+            if [ $attempt -gt 1 ]; then
+                echo "  Retry attempt $attempt/$max_attempts..."
+                sleep 2
+            fi
+            
+            # Download installer script with SSL options and timeout
+            if curl --proto '=https' --tlsv1.2 -sSf --max-time 60 --connect-timeout 10 \
+                    --cacert /etc/ssl/certs/ca-certificates.crt \
+                    "$url" > /tmp/solana_install.sh 2>/dev/null; then
+                # Execute the downloaded script
+                if bash /tmp/solana_install.sh; then
+                    rm -f /tmp/solana_install.sh
+                    return 0
+                fi
+            fi
+            
+            attempt=$((attempt + 1))
+        done
+        
+        rm -f /tmp/solana_install.sh
+        return 1
+    }
+    
+    solana_installed=0
+    
+    # Try official Solana release
+    if install_solana_with_retry "https://release.solana.com/stable/install" "Solana"; then
+        solana_installed=1
         echo "✅ Solana installed."
-    elif sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)" 2>/dev/null; then
+    # Fallback to Agave (community-maintained)
+    elif install_solana_with_retry "https://release.anza.xyz/stable/install" "Agave"; then
+        solana_installed=1
         echo "✅ Solana installed (via Agave)."
     else
         FAILURES="$FAILURES solana"
-        echo "⚠️  Solana install timed out. Run 'uso setup' again later to retry."
+        echo "⚠️  Solana install failed after retries. Network or certificate issue detected."
+        echo "   Run 'uso init' again to retry."
     fi
+    
     export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 else
     echo "✅ Solana already installed."
@@ -244,7 +339,7 @@ if ! command -v anchor &> /dev/null; then
     # Install AVM if not present
     if ! command -v avm &> /dev/null; then
         echo "⚓ Installing AVM (compiling from source, ~5 min)..."
-        if cargo install --git https://github.com/coral-xyz/anchor avm --locked --force; then
+    if run_with_progress "⚓ Installing AVM (compiling from source)..." 60 85 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force; then
             echo "✅ AVM compiled."
         else
             FAILURES="$FAILURES avm"
@@ -257,12 +352,12 @@ if ! command -v anchor &> /dev/null; then
     # Install Anchor via AVM (try binary first, then compile from source)
     if command -v avm &> /dev/null; then
         echo "⚓ Installing Anchor CLI..."
-        if avm install latest 2>/dev/null; then
+      if run_with_progress "⚓ Installing Anchor CLI..." 85 100 avm install latest; then
             avm use latest
             echo "✅ Anchor installed."
         else
             echo "⚠️  Binary download timed out. Building from source (this takes ~10 min)..."
-            if avm install latest --force 2>/dev/null; then
+        if run_with_progress "⚓ Building Anchor CLI from source..." 85 100 avm install latest --force; then
                 avm use latest
                 echo "✅ Anchor built from source."
             else
@@ -294,7 +389,9 @@ fi
   const spin2 = spinner(
     "Phase 2/2: Installing Rust, Solana, Anchor (this takes a while)...",
   ).start();
-  const userRes = shell.exec(`wsl -d Ubuntu -e bash "${wslUserScriptPath}"`);
+  const userRes = shell.exec(
+    `wsl -d ${WSL_DISTRO} -e bash "${wslUserScriptPath}"`,
+  );
   fs.unlinkSync(userScriptPath);
 
   if (userRes.code === 0) {
@@ -306,7 +403,7 @@ fi
 
   // Always set stealth mode config — even partial setup enables routing
   const configPath = path.join(os.homedir(), ".uso-config.json");
-  const config = { mode: "wsl", distro: "Ubuntu" };
+  const config = { mode: "wsl", distro: WSL_DISTRO };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
   log.success("✅ Stealth Mode Enabled. 'uso' commands will now run via WSL.");

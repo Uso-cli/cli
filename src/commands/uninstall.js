@@ -331,6 +331,33 @@ const uninstall = async (component) => {
     }
   }
 
+  // 3.5 Remove WSL Distro (if stealth mode is active)
+  if (stealth.enabled && os.platform() === "win32") {
+    const removeWslDistro = await askQuestion(
+      "\n🐧 Remove WSL Ubuntu distro completely? (y/N): ",
+    );
+    if (removeWslDistro.toLowerCase() === "y") {
+      log.warn(`⚠️  This will completely remove the ${stealth.distro} distro and all its data.`);
+      const confirmWslRemoval = await askQuestion(
+        "💥 Type 'REMOVE WSL' to confirm distro removal: ",
+      );
+      if (confirmWslRemoval === "REMOVE WSL") {
+        log.info(`Unregistering ${stealth.distro} distro...`);
+        const unregisterCmd = `wsl --unregister ${stealth.distro}`;
+        const result = runOrElevate(
+          unregisterCmd,
+          `Unregister WSL distro ${stealth.distro}`,
+          { enabled: false, distro: stealth.distro },
+        );
+        if (result) {
+          log.success(`✅ ${stealth.distro} distro removed.`);
+        }
+      } else {
+        log.info("WSL distro removal cancelled.");
+      }
+    }
+  }
+
   // 4. WALLET REMOVAL (DANGER)
   const walletPath = path.join(os.homedir(), ".config", "solana", "id.json");
   const wslWalletPath = "$HOME/.config/solana/id.json";
