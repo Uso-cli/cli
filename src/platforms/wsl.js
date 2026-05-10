@@ -277,6 +277,32 @@ else
 fi
 source $HOME/.cargo/env 2>/dev/null || true
 
+# --- Solana SBPF Toolchain (required for anchor build) ---
+if ! rustup target list 2>/dev/null | grep -q "sbpf-solana-solana"; then
+    echo "🎯 Installing Solana SBPF toolchain..."
+    if run_with_progress "🎯 Installing Solana SBPF target..." 35 55 rustup target add sbpf-solana-solana; then
+        echo "✅ SBPF target installed."
+    else
+        FAILURES="$FAILURES sbpf-target"
+        echo "❌ SBPF target installation failed."
+    fi
+else
+    echo "✅ SBPF target already installed."
+fi
+
+# Install cargo-build-sbf
+if ! command -v cargo-build-sbf &> /dev/null; then
+    echo "🔨 Installing cargo-build-sbf..."
+    if run_with_progress "🔨 Installing cargo-build-sbf..." 55 60 cargo install cargo-build-sbf; then
+        echo "✅ cargo-build-sbf installed."
+    else
+        FAILURES="$FAILURES cargo-build-sbf"
+        echo "⚠️  cargo-build-sbf install failed (run 'uso init' to retry)."
+    fi
+else
+    echo "✅ cargo-build-sbf already installed."
+fi
+
 # --- Solana ---
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 if ! command -v solana &> /dev/null; then
@@ -339,7 +365,7 @@ if ! command -v anchor &> /dev/null; then
     # Install AVM if not present
     if ! command -v avm &> /dev/null; then
         echo "⚓ Installing AVM (compiling from source, ~5 min)..."
-    if run_with_progress "⚓ Installing AVM (compiling from source)..." 60 85 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force; then
+    if run_with_progress "⚓ Installing AVM (compiling from source)..." 65 85 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force; then
             echo "✅ AVM compiled."
         else
             FAILURES="$FAILURES avm"
