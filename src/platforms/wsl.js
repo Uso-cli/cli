@@ -116,16 +116,48 @@ const installWsl = async () => {
     );
     log.warn("⏳ This may take a few minutes (Downloading ~500MB)...");
 
-    // Helper to try install commands
+    // Helper to try install commands cleanly
     const tryInstall = (args, description) => {
-      log.info(`👉 Attempting: ${description}...`);
-      // Fix Deprecation: shell: false is safer and prevents warning
-      const proc = spawnSync("wsl", args, { stdio: "inherit", shell: false });
-      return proc.status === 0;
+      return new Promise((resolve) => {
+        const { spawn } = require("child_process");
+        const spin = spinner(`Attempting: ${description}...`).start();
+        const proc = spawn("wsl", args, { shell: false });
+        let output = "";
+
+        proc.stdout.on("data", (data) => {
+          const text = data.toString();
+          output += text;
+          // Parse progress percentages (e.g., [====   8.4%   ])
+          const match = text.match(/(\d+\.\d+)%/);
+          if (match) {
+            spin.text = `Downloading (${description})... ${match[1]}%`;
+          }
+        });
+
+        proc.stderr.on("data", (data) => {
+          output += data.toString();
+        });
+
+        proc.on("close", (code) => {
+          if (code === 0) {
+            spin.succeed(`${description} successful.`);
+            resolve(true);
+          } else if (
+            output.includes("ERROR_ALREADY_EXISTS") ||
+            output.includes("already exists")
+          ) {
+            spin.succeed("Uso Engine is already downloaded.");
+            resolve(true);
+          } else {
+            spin.fail(`${description} failed.`);
+            resolve(false);
+          }
+        });
+      });
     };
 
     // Attempt 1: Standard Install
-    let success = tryInstall(
+    let success = await tryInstall(
       ["--install", "-d", WSL_DISTRO],
       "Standard Install",
     );
@@ -135,8 +167,8 @@ const installWsl = async () => {
       log.warn(
         "⚠️  Standard install failed. Attempting to update WSL kernel...",
       );
-      spawnSync("wsl", ["--update"], { stdio: "inherit", shell: false });
-      success = tryInstall(
+      await tryInstall(["--update"], "Update WSL Kernel");
+      success = await tryInstall(
         ["--install", "-d", WSL_DISTRO],
         "Install after Update",
       );
@@ -145,7 +177,7 @@ const installWsl = async () => {
     // Attempt 3: Web Download (Bypasses Microsoft Store blocks)
     if (!success) {
       log.warn("⚠️  Still failing. Trying --web-download (Bypasses Store)...");
-      success = tryInstall(
+      success = await tryInstall(
         ["--install", "-d", WSL_DISTRO, "--web-download"],
         "Web Download Install",
       );
