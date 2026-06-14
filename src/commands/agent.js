@@ -248,9 +248,17 @@ const agentConfig = async (options) => {
     setApiKey("github", options.githubToken);
     log.success("✅ GitHub Models token saved.");
   }
+  if (options.removeKeys) {
+    const config = loadAgentConfig();
+    config.gemini = { ...config.gemini, apiKey: "" };
+    config.openai = { ...config.openai, apiKey: "" };
+    config.github = { ...config.github, token: "" };
+    saveAgentConfig(config);
+    log.success("✅ All API keys removed.");
+  }
 
   // Show current config
-  if (!options.geminiKey && !options.openaiKey && !options.githubToken) {
+  if (!options.geminiKey && !options.openaiKey && !options.githubToken && !options.removeKeys) {
     const config = loadAgentConfig();
     console.log();
     console.log(chalk.bold("USO Agent Configuration"));
@@ -287,6 +295,9 @@ const agentConfig = async (options) => {
     );
     console.log(
       chalk.dim("  uso agent-config --github-token <token>"),
+    );
+    console.log(
+      chalk.dim("  uso agent-config --remove-keys"),
     );
     console.log();
   }

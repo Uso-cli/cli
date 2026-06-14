@@ -117,6 +117,7 @@ program
     .option('--gemini-key <key>', 'Set Gemini API key')
     .option('--openai-key <key>', 'Set OpenAI API key')
     .option('--github-token <token>', 'Set GitHub Models PAT token')
+    .option('--remove-keys', 'Remove all saved API keys')
     .action(agentConfig);
 
 program.parse(process.argv);

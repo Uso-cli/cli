@@ -66,8 +66,12 @@ export class GitHubModelsAdapter implements LlmAdapter {
     const startMs = Date.now();
 
     // GitHub Models uses the OpenAI chat completions format
+    const actualModel = this.config.model.includes("/") 
+      ? this.config.model.split("/").pop() 
+      : this.config.model;
+
     const body: Record<string, unknown> = {
-      model: this.config.model,
+      model: actualModel,
       messages: messages.map((m) => {
         const msg: Record<string, unknown> = {
           role: m.role,
