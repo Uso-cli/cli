@@ -204,8 +204,16 @@ const installWsl = async () => {
       silent: true,
     });
     if (verifyInstall.code !== 0) {
+      const rawError = (verifyInstall.stderr || verifyInstall.stdout || "")
+        .replace(/\x00/g, "")
+        .trim();
+
+      log.warn(`⚠️  ${WSL_DISTRO} is not ready yet.`);
+      if (rawError) {
+        console.log(chalk.red(`\nWSL Error Details:\n${rawError}\n`));
+      }
       log.warn(
-        `⚠️  ${WSL_DISTRO} is not ready yet. WSL installation usually needs a full system reboot before the distro becomes available.`,
+        "👉 WSL installation usually needs a full system reboot, OR you need to enable 'Virtual Machine Platform' / 'Virtualization' in your BIOS.",
       );
       log.warn(
         "👉 Restart Windows, then run 'uso install' again to continue the setup.",
