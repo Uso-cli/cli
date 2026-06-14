@@ -1,6 +1,6 @@
 {
   "name": "@xaidenlabs/uso",
-  "version": "1.1.94",
+  "version": "1.1.95",
   "description": "Universal Solana Development Toolchain. Native or Stealth WSL Mode. Build, test, and deploy without the friction.",
   "bin": {
     "uso": "bin/index.js"
@@ -15,7 +15,8 @@
     "anchor_project/tsconfig.json",
     "anchor_project/programs/uso_verifier/Cargo.toml",
     "anchor_project/programs/uso_verifier/src",
-    "anchor_project/tests"
+    "anchor_project/tests",
+    "packages"
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
