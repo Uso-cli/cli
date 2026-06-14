@@ -1,6 +1,6 @@
 {
   "name": "@xaidenlabs/uso",
-  "version": "1.1.91",
+  "version": "1.1.92",
   "description": "Universal Solana Development Toolchain. Native or Stealth WSL Mode. Build, test, and deploy without the friction.",
   "bin": {
     "uso": "bin/index.js"

@@ -224,12 +224,52 @@ const doctor = async () => {
     );
   }
 
-  checkGit();
-  if (platform === "win32") checkWsl();
-  checkRust();
-  checkSolana();
-  checkAnchor();
-  checkCppTools();
+  const missing = [];
+  if (!checkGit()) missing.push({name: 'Git', component: 'git'});
+  if (platform === "win32" && !checkWsl()) missing.push({name: 'WSL', component: 'wsl'});
+  if (!checkRust()) missing.push({name: 'Rust', component: 'rust'});
+  if (!checkSolana()) missing.push({name: 'Solana CLI', component: 'solana'});
+  if (!checkAnchor()) missing.push({name: 'Anchor', component: 'anchor'});
+  if (!checkCppTools()) missing.push({name: 'C++ Build Tools', component: 'cpptools'});
+
+  if (missing.length > 0) {
+    console.log("");
+    log.info("⚠️  Some components are missing.");
+    const { init } = require("./init");
+    const readline = require("readline");
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
+
+    for (const item of missing) {
+      const ans = await ask(`🤔 Do you want to install ${item.name}? (y/N): `);
+      if (ans.trim().toLowerCase() === 'y') {
+        if (item.component === 'git') {
+          log.warn("👉 Git cannot be installed automatically yet. Please install it manually.");
+        } else if (item.component === 'cpptools') {
+          log.warn("👉 Please install C++ Build Tools manually from: https://visualstudio.microsoft.com/visual-cpp-build-tools/");
+        } else if (item.component === 'wsl' || platform === "win32") {
+          // On Windows, the init command automatically provisions the entire WSL environment with all components
+          log.info(`🚀 Starting installation...`);
+          await init();
+          // If we run full init on Windows, it installs everything, so we can break the loop
+          break;
+        } else {
+          log.info(`🚀 Installing ${item.name}...`);
+          await init(item.component);
+        }
+      }
+    }
+    rl.close();
+    console.log("");
+    log.success("🩺 Doctor completed. Please run 'uso doctor' again to verify.");
+  } else {
+    console.log("");
+    log.success("🎉 Everything looks good! You're ready to build.");
+  }
 };
 
 module.exports = {
