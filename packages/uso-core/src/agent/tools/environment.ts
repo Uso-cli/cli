@@ -46,11 +46,11 @@ export const checkEnvironmentTool: AgentTool = {
     }
 
     const isWsl = state.environment.os === "windows" && state.environment.route === "wsl";
-    const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"';
+    const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"; export NVM_DIR="$HOME/.nvm"; if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh" 2>/dev/null; nvm use node 2>/dev/null; fi';
     
     function spawnSolana(args: string[]) {
       if (isWsl) {
-        return spawnSync("wsl.exe", ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup} && solana ${args.join(" ")}`], {
+        return spawnSync("wsl.exe", ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup}; solana ${args.join(" ")}`], {
           encoding: "utf8",
           timeout: 5000,
         });
@@ -135,15 +135,27 @@ export const checkWalletBalanceTool: AgentTool = {
 
   async execute(
     params: Record<string, unknown>,
+    state: AgentState,
   ): Promise<ToolResult> {
     const address = params.address ? String(params.address) : undefined;
     const args = address ? ["balance", address] : ["balance"];
 
     try {
-      const result = spawnSync("solana", args, {
-        encoding: "utf8",
-        timeout: 10000,
-      });
+      const isWsl = state.environment.os === "windows" && state.environment.route === "wsl";
+      const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"; export NVM_DIR="$HOME/.nvm"; if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh" 2>/dev/null; nvm use node 2>/dev/null; fi';
+      
+      let result;
+      if (isWsl) {
+        result = spawnSync("wsl.exe", ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup}; solana ${args.join(" ")}`], {
+          encoding: "utf8",
+          timeout: 10000,
+        });
+      } else {
+        result = spawnSync("solana", args, {
+          encoding: "utf8",
+          timeout: 10000,
+        });
+      }
 
       if (result.status === 0 && result.stdout) {
         return {
@@ -184,12 +196,26 @@ export const checkClusterTool: AgentTool = {
     },
   },
 
-  async execute(): Promise<ToolResult> {
+  async execute(
+    _params: Record<string, unknown>,
+    state: AgentState,
+  ): Promise<ToolResult> {
     try {
-      const result = spawnSync("solana", ["config", "get"], {
-        encoding: "utf8",
-        timeout: 5000,
-      });
+      const isWsl = state.environment.os === "windows" && state.environment.route === "wsl";
+      const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"; export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" 2>/dev/null';
+      
+      let result;
+      if (isWsl) {
+        result = spawnSync("wsl.exe", ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup}; solana config get`], {
+          encoding: "utf8",
+          timeout: 5000,
+        });
+      } else {
+        result = spawnSync("solana", ["config", "get"], {
+          encoding: "utf8",
+          timeout: 5000,
+        });
+      }
 
       if (result.status === 0 && result.stdout) {
         return {

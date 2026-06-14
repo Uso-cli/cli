@@ -64,8 +64,8 @@ export const runTerminalCommandTool: AgentTool = {
       if (isWindows && isWslRoute) {
         shell = "wsl.exe";
         // Setup the environment like the CLI does
-        const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"';
-        shellArgs = ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup} && ${command}`];
+        const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"; export NVM_DIR="$HOME/.nvm"; if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh" 2>/dev/null; nvm use node 2>/dev/null; fi';
+        shellArgs = ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup}; ${command}`];
       }
 
       const child = spawn(shell, shellArgs, {

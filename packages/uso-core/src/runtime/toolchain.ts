@@ -45,8 +45,8 @@ function probe(command: string, args: string[], timeout: number): ToolVersion {
           const configJson = JSON.parse(fs.readFileSync(configPath, "utf8"));
           if (configJson.mode === "wsl") {
             executable = "wsl.exe";
-            const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"';
-            spawnArgs = ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup} && ${command} ${args.join(" ")}`];
+            const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"; export NVM_DIR="$HOME/.nvm"; if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh" 2>/dev/null; nvm use node 2>/dev/null; fi';
+            spawnArgs = ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup}; ${command} ${args.join(" ")}`];
           }
         }
       } catch (e) {
