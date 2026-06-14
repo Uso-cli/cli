@@ -125,7 +125,7 @@ const installWsl = async () => {
         let output = "";
 
         proc.stdout.on("data", (data) => {
-          const text = data.toString();
+          const text = data.toString().replace(/\x00/g, "");
           output += text;
           // Parse progress percentages (e.g., [====   8.4%   ])
           const match = text.match(/(\d+\.\d+)%/);
@@ -135,7 +135,7 @@ const installWsl = async () => {
         });
 
         proc.stderr.on("data", (data) => {
-          output += data.toString();
+          output += data.toString().replace(/\x00/g, "");
         });
 
         proc.on("close", (code) => {
@@ -144,7 +144,8 @@ const installWsl = async () => {
             resolve(true);
           } else if (
             output.includes("ERROR_ALREADY_EXISTS") ||
-            output.includes("already exists")
+            output.includes("already exists") ||
+            output.includes("A distribution with the supplied name already exists")
           ) {
             spin.succeed("Uso Engine is already downloaded.");
             resolve(true);
