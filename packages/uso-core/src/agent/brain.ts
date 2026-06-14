@@ -48,7 +48,32 @@ export class AgentBrain {
     };
 
     // Try native function calling if the adapter supports it
-    const toolDefs = this.tools.getDefinitions();
+    const toolDefs = [...this.tools.getDefinitions()];
+    toolDefs.push(
+      {
+        name: "TASK_COMPLETE",
+        description: "Mark the user's goal as complete.",
+        parameters: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "Summary of what was accomplished." }
+          },
+          required: ["summary"],
+        }
+      },
+      {
+        name: "TASK_FAILED",
+        description: "Mark the user's goal as failed due to inability to accomplish it.",
+        parameters: {
+          type: "object",
+          properties: {
+            reason: { type: "string", description: "Reason why the goal could not be completed." }
+          },
+          required: ["reason"],
+        }
+      }
+    );
+
     if (
       this.llm.provider === "openai" ||
       this.llm.provider === "github" ||
@@ -85,6 +110,28 @@ export class AgentBrain {
         role: "thought",
         content: thought,
       });
+
+      if (tc.name === "TASK_COMPLETE") {
+        return {
+          action: {
+            type: "task_complete",
+            thought,
+            summary: String(tc.arguments?.summary ?? ""),
+          },
+          state: newState,
+        };
+      }
+
+      if (tc.name === "TASK_FAILED") {
+        return {
+          action: {
+            type: "task_failed",
+            thought,
+            reason: String(tc.arguments?.reason ?? ""),
+          },
+          state: newState,
+        };
+      }
 
       return {
         action: {

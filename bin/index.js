@@ -107,7 +107,7 @@ program
     .description('Start the AI Agent to accomplish a goal autonomously')
     .option('--model <model>', 'LLM model to use (e.g., llama3.1:8b, gemini-2.0-flash, openai/gpt-4o)')
     .option('--provider <provider>', 'Force a specific LLM provider (ollama, gemini, openai, github)')
-    .option('--max-loops <n>', 'Maximum reasoning iterations', '3')
+    .option('--max-loops <n>', 'Maximum reasoning iterations', '10')
     .option('--verbose', 'Show full reasoning traces')
     .action(agent);
 
