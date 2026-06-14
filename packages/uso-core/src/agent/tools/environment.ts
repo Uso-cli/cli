@@ -45,12 +45,25 @@ export const checkEnvironmentTool: AgentTool = {
       }
     }
 
-    // Wallet
-    try {
-      const walletResult = spawnSync("solana", ["address"], {
+    const isWsl = state.environment.os === "windows" && state.environment.route === "wsl";
+    const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"';
+    
+    function spawnSolana(args: string[]) {
+      if (isWsl) {
+        return spawnSync("wsl.exe", ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup} && solana ${args.join(" ")}`], {
+          encoding: "utf8",
+          timeout: 5000,
+        });
+      }
+      return spawnSync("solana", args, {
         encoding: "utf8",
         timeout: 5000,
       });
+    }
+
+    // Wallet
+    try {
+      const walletResult = spawnSolana(["address"]);
       if (walletResult.status === 0 && walletResult.stdout) {
         results.push(`Wallet: ${walletResult.stdout.trim()}`);
       } else {
@@ -62,10 +75,7 @@ export const checkEnvironmentTool: AgentTool = {
 
     // Balance
     try {
-      const balResult = spawnSync("solana", ["balance"], {
-        encoding: "utf8",
-        timeout: 5000,
-      });
+      const balResult = spawnSolana(["balance"]);
       if (balResult.status === 0 && balResult.stdout) {
         results.push(`Balance: ${balResult.stdout.trim()}`);
       }
@@ -75,10 +85,7 @@ export const checkEnvironmentTool: AgentTool = {
 
     // Cluster
     try {
-      const clusterResult = spawnSync("solana", ["config", "get"], {
-        encoding: "utf8",
-        timeout: 5000,
-      });
+      const clusterResult = spawnSolana(["config", "get"]);
       if (clusterResult.status === 0 && clusterResult.stdout) {
         const rpcMatch = clusterResult.stdout.match(/RPC URL:\s*([^\n]+)/);
         if (rpcMatch) {

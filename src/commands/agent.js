@@ -286,6 +286,25 @@ const agentConfig = async (options) => {
       `  Confirm destructive: ${chalk.cyan(config.agent?.confirmDestructive ?? true)}`,
     );
     console.log();
+    
+    // Attempt to determine the active provider
+    try {
+      const core = require("../../packages/uso-core/dist/cjs/index.js");
+      const usoAgent = new core.UsoAgent(config);
+      const llmDiag = await usoAgent.diagnoseLlm();
+      const available = llmDiag.filter((d) => d.available);
+      if (available.length > 0) {
+        console.log(chalk.bold("Active Provider:"));
+        console.log(`  ✅ ${chalk.green(available[0].name)}`);
+      } else {
+        console.log(chalk.bold("Active Provider:"));
+        console.log(`  ❌ ${chalk.red("No LLM provider available. Please set an API key.")}`);
+      }
+    } catch (e) {
+      // Ignore if core fails to load here
+    }
+
+    console.log();
     console.log(chalk.dim("Set API keys:"));
     console.log(
       chalk.dim("  uso agent-config --gemini-key <key>"),

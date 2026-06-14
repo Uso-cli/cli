@@ -56,10 +56,19 @@ export const runTerminalCommandTool: AgentTool = {
 
     return new Promise((resolve) => {
       const isWindows = state.environment.os === "windows";
-      const shell = isWindows ? "cmd.exe" : "/bin/bash";
-      const shellFlag = isWindows ? "/c" : "-c";
+      const isWslRoute = state.environment.route === "wsl";
+      
+      let shell = isWindows ? "cmd.exe" : "/bin/bash";
+      let shellArgs = isWindows ? ["/c", command] : ["-c", command];
 
-      const child = spawn(shell, [shellFlag, command], {
+      if (isWindows && isWslRoute) {
+        shell = "wsl.exe";
+        // Setup the environment like the CLI does
+        const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"';
+        shellArgs = ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup} && ${command}`];
+      }
+
+      const child = spawn(shell, shellArgs, {
         cwd,
         env: process.env,
         timeout: timeoutMs,

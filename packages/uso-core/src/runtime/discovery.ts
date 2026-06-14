@@ -120,7 +120,24 @@ export function discoverRuntime(config: UsoConfig): RuntimeDiscovery {
   const shellPrefs = detectShellPreference();
   const defaultDistro = getDefaultDistro(wslStatus);
 
-  const preferWsl = config.runtime?.preferWsl ?? false;
+  // Check ~/.uso-config.json for Stealth Mode
+  let stealthWsl = false;
+  try {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const configPath = path.join(os.homedir(), ".uso-config.json");
+    if (fs.existsSync(configPath)) {
+      const raw = fs.readFileSync(configPath, "utf8");
+      const configJson = JSON.parse(raw);
+      if (configJson.mode === "wsl") {
+        stealthWsl = true;
+      }
+    }
+  } catch (e) {
+    // Ignore config read errors
+  }
+
+  const preferWsl = stealthWsl || (config.runtime?.preferWsl ?? false);
   const route = preferWsl && wslStatus.available ? "wsl" : "native";
   const shell: "powershell" | "bash" =
     config.runtime?.shell ?? shellPrefs.shell;

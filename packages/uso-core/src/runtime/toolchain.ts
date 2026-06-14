@@ -31,7 +31,30 @@ function parseVersion(raw: string): string | undefined {
 
 function probe(command: string, args: string[], timeout: number): ToolVersion {
   try {
-    const result = spawnSync(command, args, {
+    let executable = command;
+    let spawnArgs = args;
+
+    // Check for stealth mode
+    const os = require("node:os");
+    const fs = require("node:fs");
+    const path = require("node:path");
+    if (process.platform === "win32") {
+      try {
+        const configPath = path.join(os.homedir(), ".uso-config.json");
+        if (fs.existsSync(configPath)) {
+          const configJson = JSON.parse(fs.readFileSync(configPath, "utf8"));
+          if (configJson.mode === "wsl") {
+            executable = "wsl.exe";
+            const envSetup = 'source $HOME/.cargo/env 2>/dev/null; export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"';
+            spawnArgs = ["-d", "Ubuntu", "-e", "bash", "-c", `${envSetup} && ${command} ${args.join(" ")}`];
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const result = spawnSync(executable, spawnArgs, {
       encoding: "utf8",
       timeout,
       stdio: ["ignore", "pipe", "pipe"],
