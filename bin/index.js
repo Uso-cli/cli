@@ -6,6 +6,7 @@ const { verify } = require('../src/commands/verify');
 const { create } = require('../src/commands/create');
 const { build, test, deploy, clean, unblock, airdrop, address, balance, validator, dev } = require('../src/commands/workflow');
 const { uninstall } = require('../src/commands/uninstall');
+const { agent, agentConfig } = require('../src/commands/agent');
 
 program
     .name('uso')
@@ -16,12 +17,14 @@ program
     .command('init [component]')
     .alias('install')
     .description('Install Rust, Solana CLI, Anchor Framework, or specific component (rust, solana, anchor)')
+    .option('-g, --global', 'Compatibility flag (ignored). uso manages toolchain components, not npm packages')
     .option('--wsl', 'Install in Stealth WSL Mode (Windows Only)')
     .action(init);
 
 program
     .command('setup [component]')
     .description('Alias for init (Install components)')
+    .option('-g, --global', 'Compatibility flag (ignored). uso manages toolchain components, not npm packages')
     .option('--wsl', 'Install in Stealth WSL Mode (Windows Only)')
     .action(init);
 
@@ -98,5 +101,22 @@ program
     .command('uninstall [component]')
     .description('Uninstall uso components (rust, solana, anchor) or all')
     .action(uninstall);
+
+program
+    .command('agent [goal...]')
+    .description('Start the AI Agent to accomplish a goal autonomously')
+    .option('--model <model>', 'LLM model to use (e.g., llama3.1:8b, gemini-2.0-flash, openai/gpt-4o)')
+    .option('--provider <provider>', 'Force a specific LLM provider (ollama, gemini, openai, github)')
+    .option('--max-loops <n>', 'Maximum reasoning iterations', '3')
+    .option('--verbose', 'Show full reasoning traces')
+    .action(agent);
+
+program
+    .command('agent-config')
+    .description('Configure API keys and preferences for the AI Agent')
+    .option('--gemini-key <key>', 'Set Gemini API key')
+    .option('--openai-key <key>', 'Set OpenAI API key')
+    .option('--github-token <token>', 'Set GitHub Models PAT token')
+    .action(agentConfig);
 
 program.parse(process.argv);

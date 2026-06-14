@@ -15,6 +15,22 @@ const { installWsl, installWslFeature } = require("../platforms/wsl");
 const init = async (component, options) => {
   const platform = os.platform();
 
+  if (options?.global) {
+    log.warn(
+      "⚠️  '-g/--global' is an npm flag and is ignored by 'uso install'.",
+    );
+  }
+
+  if (
+    typeof component === "string" &&
+    (component.startsWith("@") || component.includes("/"))
+  ) {
+    log.error(`❌ '${component}' is not a valid uso component.`);
+    log.info("👉 Use one of: rust, solana, anchor");
+    log.info("👉 To install this CLI globally, run: npm install -g @xaidenlabs/uso");
+    return;
+  }
+
   // --- On Windows, ALWAYS use the WSL path ---
   if (platform === "win32") {
     const hasWslBinary = !!shell.which("wsl");

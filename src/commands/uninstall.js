@@ -47,6 +47,61 @@ const wslPathExists = (wslPath, stealth) => {
   return result.code === 0;
 };
 
+const getInstalledAvmVersions = (stealth) => {
+  const listResult = stealth.enabled
+    ? runInStealth("avm list", stealth, true)
+    : shell.exec("avm list", { silent: true });
+
+  if (listResult.code !== 0) return [];
+
+  const versions = [];
+  for (const rawLine of listResult.stdout.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // avm list output can contain markers like "* 0.30.1" or "0.30.1 (current)"
+    const match = line.match(/(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/);
+    if (match) versions.push(match[1]);
+  }
+
+  return [...new Set(versions)];
+};
+
+const isCargoPackageInstalled = (packageName, stealth) => {
+  const checkCmd = `cargo install --list | grep -q '^${packageName} v'`;
+  const result = stealth.enabled
+    ? runInStealth(checkCmd, stealth, true)
+    : shell.exec(checkCmd, { silent: true });
+  return result.code === 0;
+};
+
+const uninstallAnchorComponents = (stealth) => {
+  if (commandExists("avm", stealth)) {
+    const versions = getInstalledAvmVersions(stealth);
+    if (versions.length > 0) {
+      for (const version of versions) {
+        runOrElevate(`avm uninstall ${version}`, `Uninstall Anchor (AVM ${version})`, stealth);
+      }
+    } else {
+      log.info("No AVM-managed Anchor versions found to remove.");
+    }
+  }
+
+  if (isCargoPackageInstalled("anchor-cli", stealth)) {
+    runOrElevate(
+      "cargo uninstall anchor-cli",
+      "Uninstall anchor-cli",
+      stealth,
+    );
+  }
+
+  if (isCargoPackageInstalled("avm", stealth)) {
+    runOrElevate("cargo uninstall avm", "Uninstall avm", stealth);
+  }
+
+  log.success("Anchor removal steps completed.");
+};
+
 /**
  * Runs a command and attempts to elevate privileges if it fails with a permission error.
  */
@@ -136,21 +191,7 @@ const uninstall = async (component) => {
       const anchorInstalled = commandExists("anchor", stealth);
       if (anchorInstalled) {
         log.info("Removing Anchor...");
-        // Try avm uninstall first if available
-        if (commandExists("avm", stealth)) {
-          runOrElevate(
-            "avm uninstall latest",
-            "Uninstall Anchor (AVM)",
-            stealth,
-          );
-        }
-        runOrElevate(
-          "cargo uninstall anchor-cli",
-          "Uninstall anchor-cli",
-          stealth,
-        );
-        runOrElevate("cargo uninstall avm", "Uninstall avm", stealth);
-        log.success("Anchor removal steps completed.");
+        uninstallAnchorComponents(stealth);
       } else {
         log.success("✅ Anchor is not installed.");
       }
@@ -253,17 +294,7 @@ const uninstall = async (component) => {
     );
     if (removeAnchor.toLowerCase() === "y") {
       log.info("Removing Anchor...");
-      // Try avm uninstall first if available
-      if (commandExists("avm", stealth)) {
-        runOrElevate("avm uninstall latest", "Uninstall Anchor (AVM)", stealth);
-      }
-      runOrElevate(
-        "cargo uninstall anchor-cli",
-        "Uninstall anchor-cli",
-        stealth,
-      );
-      runOrElevate("cargo uninstall avm", "Uninstall avm", stealth);
-      log.success("Anchor removal steps completed.");
+      uninstallAnchorComponents(stealth);
     }
   }
 

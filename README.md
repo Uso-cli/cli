@@ -10,6 +10,7 @@ USO is a zero-friction CLI toolchain that installs, manages, and runs your entir
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [AI Agent (New)](#ai-agent-new)
 - [Stealth WSL Mode (Windows)](#stealth-wsl-mode-windows)
 - [Full Environment Setup](#full-environment-setup)
 - [Granular Installation](#granular-installation)
@@ -63,6 +64,48 @@ cd my-project && npm install
 # 5. Start coding
 uso dev
 ```
+
+---
+
+## AI Agent (New)
+
+USO isn't just a command runner — it's an **Autonomous AI Agent** that can write code, build programs, debug errors, and deploy. Powered by ReAct (Reason + Act) architecture, the agent thinks step-by-step and uses tools to accomplish your goals.
+
+### 1. Configure an LLM Provider
+
+The agent needs an LLM to think. It supports four providers out of the box:
+
+```bash
+# Option A: Local & Free (Ollama)
+# Install from ollama.com, then run:
+ollama pull llama3.1:8b
+
+# Option B: GitHub Models (Free with GitHub Account)
+uso agent-config --github-token <your-github-pat>
+
+# Option C: Gemini
+uso agent-config --gemini-key <your-api-key>
+
+# Option D: OpenAI
+uso agent-config --openai-key <your-api-key>
+```
+
+### 2. Give it a Goal
+
+Just tell the agent what you want to do. It will check your environment, plan a strategy, execute the commands, and automatically self-heal if any step fails.
+
+```bash
+# General environment fixing
+uso agent "Check my Solana development environment and fix any missing tools"
+
+# Build and test cycle
+uso agent "Build my program and run the tests. If tests fail, fix the errors."
+
+# Deployment
+uso agent "Deploy my staking program to devnet and airdrop SOL if I don't have enough."
+```
+
+The agent runs a continuous FSM loop (`plan` → `execute` → `validate` → `heal`), streaming its thoughts and actions directly to your terminal.
 
 ---
 
@@ -397,6 +440,8 @@ npm uninstall -g @xaidenlabs/uso
 | `uso init rust` | `uso install rust` | Install Rust only |
 | `uso init solana` | `uso install solana` | Install Solana CLI only |
 | `uso init anchor` | `uso install anchor` | Install Anchor Framework only |
+| `uso agent <goal>` | — | Run the Autonomous AI Agent |
+| `uso agent-config` | — | Configure Agent LLM providers |
 | `uso doctor` | — | Diagnose environment |
 | `uso verify` | — | End-to-end verification build |
 | `uso create <name>` | — | Scaffold a new Anchor project |
