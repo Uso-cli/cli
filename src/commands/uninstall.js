@@ -100,98 +100,6 @@ const uninstallAnchorComponents = (stealth) => {
   }
 
   log.success("Anchor removal steps completed.");
-};
-
-/**
- * Runs a command and attempts to elevate privileges if it fails with a permission error.
- */
-const runOrElevate = (
-  command,
-  description,
-  stealth = { enabled: false, distro: "Ubuntu" },
-) => {
-  if (stealth.enabled) {
-    const result = runInStealth(command, stealth, true);
-
-    if (result.code === 0) {
-      if (result.stdout) console.log(result.stdout);
-      return true;
-    }
-
-    if (result.stdout) console.log(result.stdout);
-    if (result.stderr) console.error(result.stderr);
-    log.error(`❌ Command failed in WSL: ${description}`);
-    return false;
-  }
-
-  // We run without silent:true initially to let the user see output,
-  // but detecting the error code is what matters.
-  // actually, to detect the specific string "os error 1314", we need to capture output.
-  // So we run silently first? Or we just run and if it fails, we assume it *might* be elevation if on Windows?
-  // Let's run synchronously and capture output.
-
-  const result = shell.exec(command, { silent: true });
-
-  if (result.code === 0) {
-    console.log(result.stdout);
-    return true;
-  }
-
-  // Print the error output to the user
-  console.log(result.stdout);
-  console.error(result.stderr);
-
-  const output = result.stderr + result.stdout;
-
-  // Check for common permission errors
-  // "os error 1314" is specific to Windows symlink privilege
-  if (
-    (output.includes("os error 1314") ||
-      output.includes("EPERM") ||
-      output.includes("permission denied")) &&
-    os.platform() === "win32"
-  ) {
-    log.warn(`⚠️  Permission denied during: ${description}`);
-    log.info("🛡️  Triggering Run as Administrator (UAC) to retry...");
-
-    // Construct PowerShell command to run cmd /c <command> as admin
-    // We need to be careful with quoting.
-    const escapedCommand = command.replace(/'/g, "''"); // Basic PowerShell escaping for single quotes
-    const elevateCmd = `powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c ${escapedCommand}' -Verb RunAs -Wait"`;
-
-    const elevatedRun = shell.exec(elevateCmd);
-
-    if (elevatedRun.code === 0) {
-      log.success(`✅ ${description} completed (Elevated).`);
-      return true;
-    } else {
-      log.error(`❌ Elevated execution failed for: ${description}`);
-      return false;
-    }
-  }
-
-  log.error(`❌ Command failed: ${description}`);
-  return false;
-};
-
-const uninstall = async (component) => {
-  const stealth = getStealthContext();
-  log.header("🗑️  USO Uninstallation & Cleanup");
-  if (stealth.enabled) {
-    log.info(
-      `🐧 Stealth Mode detected. Uninstall targets WSL distro: ${stealth.distro}`,
-    );
-  }
-
-  if (component) {
-    component = component.toLowerCase();
-    log.info(`🎯 Targeted uninstallation: ${component}`);
-
-    if (component === "anchor") {
-      const anchorInstalled = commandExists("anchor", stealth);
-      if (anchorInstalled) {
-        log.info("Removing Anchor...");
-        uninstallAnchorComponents(stealth);
       } else {
         log.success("✅ Anchor is not installed.");
       }
@@ -362,6 +270,7 @@ const uninstall = async (component) => {
     }
   }
 
+<<<<<<< HEAD
   // 3.5 Remove WSL Distro (if stealth mode is active)
   if (stealth.enabled && os.platform() === "win32") {
     const removeWslDistro = await askQuestion(
@@ -391,6 +300,8 @@ const uninstall = async (component) => {
     }
   }
 
+=======
+>>>>>>> d47ca156cb2a252419c54c520c7fcd0f0c18c525
   // 4. WALLET REMOVAL (DANGER)
   const walletPath = path.join(os.homedir(), ".config", "solana", "id.json");
   const wslWalletPath = "$HOME/.config/solana/id.json";
