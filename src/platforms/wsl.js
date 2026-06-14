@@ -318,18 +318,9 @@ else
 fi
 source $HOME/.cargo/env 2>/dev/null || true
 
-# --- Solana SBPF Toolchain (required for anchor build) ---
-if ! rustup target list 2>/dev/null | grep -q "sbpf-solana-solana"; then
-    echo "🎯 Installing Solana SBPF toolchain..."
-    if run_with_progress "🎯 Installing Solana SBPF target..." 35 55 rustup target add sbpf-solana-solana; then
-        echo "✅ SBPF target installed."
-    else
-        FAILURES="$FAILURES sbpf-target"
-        echo "❌ SBPF target installation failed."
-    fi
-else
-    echo "✅ SBPF target already installed."
-fi
+# --- Solana SBPF Toolchain ---
+# The SBPF target is managed by Solana's custom rustc inside the Solana CLI.
+echo "✅ SBPF target is managed by Solana CLI."
 
 # Install cargo-build-sbf
 if ! command -v cargo-build-sbf &> /dev/null; then
