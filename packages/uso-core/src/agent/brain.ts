@@ -47,40 +47,8 @@ export class AgentBrain {
       maxTokens: 2048,
     };
 
-    // Try native function calling if the adapter supports it
-    const toolDefs = [...this.tools.getDefinitions()];
-    toolDefs.push(
-      {
-        name: "TASK_COMPLETE",
-        description: "Mark the user's goal as complete.",
-        parameters: {
-          type: "object",
-          properties: {
-            summary: { type: "string", description: "Summary of what was accomplished." }
-          },
-          required: ["summary"],
-        }
-      },
-      {
-        name: "TASK_FAILED",
-        description: "Mark the user's goal as failed due to inability to accomplish it.",
-        parameters: {
-          type: "object",
-          properties: {
-            reason: { type: "string", description: "Reason why the goal could not be completed." }
-          },
-          required: ["reason"],
-        }
-      }
-    );
-
-    if (
-      this.llm.provider === "openai" ||
-      this.llm.provider === "github" ||
-      this.llm.provider === "gemini"
-    ) {
-      options.tools = toolDefs;
-    }
+    // Removed native tool calling logic because GitHub Models' gpt-4o-mini often omits tool calls.
+    // We will rely entirely on the text-based THOUGHT/ACTION JSON format.
 
     let response;
     try {
@@ -101,48 +69,7 @@ export class AgentBrain {
       };
     }
 
-    // Handle native function calling responses
-    if (response.toolCalls && response.toolCalls.length > 0) {
-      const tc = response.toolCalls[0]; // Process one tool call at a time
-      const thought = response.content || `Calling ${tc.name}`;
 
-      const newState = appendHistory(state, {
-        role: "thought",
-        content: thought,
-      });
-
-      if (tc.name === "TASK_COMPLETE") {
-        return {
-          action: {
-            type: "task_complete",
-            thought,
-            summary: String(tc.arguments?.summary ?? ""),
-          },
-          state: newState,
-        };
-      }
-
-      if (tc.name === "TASK_FAILED") {
-        return {
-          action: {
-            type: "task_failed",
-            thought,
-            reason: String(tc.arguments?.reason ?? ""),
-          },
-          state: newState,
-        };
-      }
-
-      return {
-        action: {
-          type: "tool_call",
-          thought,
-          toolName: tc.name,
-          toolParams: tc.arguments,
-        },
-        state: newState,
-      };
-    }
 
     // Parse text-based THOUGHT + ACTION format (for Ollama and fallback)
     const action = this.parseTextResponse(response.content);
@@ -166,6 +93,27 @@ export class AgentBrain {
         observation: "No tool specified.",
         success: false,
         state,
+      };
+    }
+
+    if (action.toolName === "INVALID_ACTION") {
+      const observation = buildObservationMessage(
+        "INVALID_ACTION",
+        false,
+        "You did not provide a valid JSON action block or native tool call. You MUST provide exactly ONE action."
+      );
+      const newState = appendHistory(state, {
+        role: "observation",
+        content: observation,
+        toolName: "INVALID_ACTION",
+      });
+      return {
+        observation,
+        success: false,
+        state: appendError(newState, {
+          message: "Invalid action format",
+          stepId: "parse",
+        }),
       };
     }
 
@@ -213,6 +161,7 @@ export class AgentBrain {
         this.tools,
         state.environment.os,
         state.environment.route,
+        false, // Force useNativeToolCalling = false
       ),
     });
 
@@ -282,9 +231,10 @@ export class AgentBrain {
 
       // No parseable action — treat as thinking aloud
       return {
-        type: "task_failed",
+        type: "tool_call",
         thought,
-        reason: "Could not parse a valid action from the LLM response.",
+        toolName: "INVALID_ACTION",
+        toolParams: {},
       };
     }
 
@@ -296,9 +246,10 @@ export class AgentBrain {
       return this.classifyAction(thought, parsed);
     } catch {
       return {
-        type: "task_failed",
+        type: "tool_call",
         thought,
-        reason: `Invalid JSON in ACTION block: ${actionMatch[1]}`,
+        toolName: "INVALID_ACTION",
+        toolParams: { error: `Invalid JSON in ACTION block: ${actionMatch[1]}` },
       };
     }
   }
