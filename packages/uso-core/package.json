@@ -18,10 +18,10 @@
   ],
   "scripts": {
     "clean": "rimraf dist",
-    "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build:esm": "tsc -p tsconfig.esm.json",
-    "build:meta": "node -e \"const fs=require('fs'); fs.mkdirSync('dist/cjs',{recursive:true}); fs.writeFileSync('dist/cjs/package.json','{\\\"type\\\":\\\"commonjs\\\"}\\n'); fs.mkdirSync('dist/esm',{recursive:true}); fs.writeFileSync('dist/esm/package.json','{\\\"type\\\":\\\"module\\\"}\\n');\"",
-    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:meta",
+    "build:cjs": "node init && tsc -p tsconfig.cjs.json",
+    "build:esm": "node init && tsc -p tsconfig.esm.json",
+    "build:meta": "node init && node -e \"const fs=require('fs'); fs.mkdirSync('dist/cjs',{recursive:true}); fs.writeFileSync('dist/cjs/package.json','{\\\"type\\\":\\\"commonjs\\\"}\\n'); fs.mkdirSync('dist/esm',{recursive:true}); fs.writeFileSync('dist/esm/package.json','{\\\"type\\\":\\\"module\\\"}\\n');\"",
+    "build": "node init && npm run clean && npm run build:cjs && npm run build:esm && npm run build:meta",
     "test": "npm run build && node --test test/*.test.cjs"
   },
   "dependencies": {
